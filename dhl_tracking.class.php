@@ -55,7 +55,7 @@ class dhl_tracking{
 		}else{
 			$this->_PIpwd = $pwd;
 		}
-		$this->checkAuth
+		$this->checkAuth;
 	}
 	
 	function logError($loc = "", $msg = "", $fail = false){
