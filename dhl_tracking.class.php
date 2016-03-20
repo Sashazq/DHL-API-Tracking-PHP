@@ -166,10 +166,19 @@ class dhl_tracking{
 		return $td;
 	}
 	
+   /**
+    * multipul - For backwards compatibility... Should NOT be used for new development.
+    * 
+    * @param array $airbill_in List of AWBs to track
+    * @access public
+    * @return array On successful track, returns an array of tracking results.
+    */
+   function multipul($airbill_in = array()) {
+      return multiple($airbill_in = array());
+   }
 
 
-
-	function multipul($airbill_in = array()){
+	function multiple($airbill_in = array()){
 		//
 		$airbill_in = (array)$airbill_in;
 		
