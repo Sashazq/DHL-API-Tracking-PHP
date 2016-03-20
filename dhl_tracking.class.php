@@ -22,7 +22,7 @@ class dhl_tracking{
 	var $_xmlEnd	= "\n";
 	
 	var $checkAuth = false;
-	var $checkReq = false;
+	var $checkReq = true;
 	
 	function __construct($mode = 'test'){
 		//
@@ -38,7 +38,6 @@ class dhl_tracking{
 				// we default to test mode
 				$this->_PImode = "test";
 				break;
-			
 		}
 	}
 	//========================================================================================
@@ -46,16 +45,19 @@ class dhl_tracking{
 	//========================================================================================
 	function setAuth($userid = NULL,$pwd = NULL){
 		if(is_null($userid)){
-			$this->logError("auth > UserID", $msg = "user id was not set", true);
+			$this->logError("auth > UserID", "user id was not set", true);
 		}else{
 			$this->_PIuserid = $userid;
 		}
-		if(is_null($userid)){
-			$this->logError("auth > Password", $msg = "Password was not set", true);
+		if(is_null($pwd)){
+			$this->logError("auth > Password", "Password was not set", true);
 		}else{
 			$this->_PIpwd = $pwd;
 		}
-		$this->checkAuth
+
+      if (!is_null($userid) && !is_null($pwd)) {
+   		$this->checkAuth = true;
+      }
 	}
 	
 	function logError($loc = "", $msg = "", $fail = false){
@@ -164,10 +166,19 @@ class dhl_tracking{
 		return $td;
 	}
 	
+   /**
+    * multipul - For backwards compatibility... Should NOT be used for new development.
+    * 
+    * @param array $airbill_in List of AWBs to track
+    * @access public
+    * @return array On successful track, returns an array of tracking results.
+    */
+   function multipul($airbill_in = array()) {
+      return multiple($airbill_in = array());
+   }
 
 
-
-	function multipul($airbill_in = array()){
+	function multiple($airbill_in = array()){
 		//
 		$airbill_in = (array)$airbill_in;
 		
@@ -211,8 +222,8 @@ class dhl_tracking{
 				$req_reference = $ts . $ts . $ts . $ts . $ts . $ts . $ts . $ts . $ts . $ts;
 				$req_reference = substr($req_reference, 0, 30);
 			
-				$req_level = "LAST_CHECK_POINT_ONLY";
-				//$req_level = "ALL_CHECK_POINTS";
+				//$req_level = "LAST_CHECK_POINT_ONLY";
+				$req_level = "ALL_CHECK_POINTS";
 			
 				$this->_xml = "";
 				$this->_xml .= "<?xml version = '1.0' encoding = 'UTF-8'?>" . $this->_xmlEnd;
@@ -235,7 +246,8 @@ class dhl_tracking{
 				
 				$this->_xml .= "<LevelOfDetails>" . $req_level . "</LevelOfDetails>" . $this->_xmlEnd;
 				$this->_xml .= "</req:KnownTrackingRequest>" . $this->_xmlEnd;
-				$xml = simplexml_load_string($this->_sendCallPI());
+            $resp = $this->_sendCallPI();
+				$xml = simplexml_load_string($resp);
 				
 				if((string)$xml->Response->Status->ActionStatus == "Failure"){
 					//is error
@@ -248,6 +260,7 @@ class dhl_tracking{
 				}else{ // MID - if((string)$xml->Response->Status->ActionStatus == "Failure")
 					// is Fine
 					$tinfo = $xml;
+
 					//here we process the responce
 					if(count($tinfo->AWBInfo) >= 1){
 						foreach($tinfo->AWBInfo AS $abi){
@@ -257,19 +270,23 @@ class dhl_tracking{
 							
 							$td['res']['status'] = (string)$abi->Status->ActionStatus;
 							
-							$td['event']['time']['date'] = (string)$abi->ShipmentInfo->ShipmentEvent->Date;
-							$td['event']['time']['time'] = (string)$abi->ShipmentInfo->ShipmentEvent->Time;
-							$td['event']['time']['stamp'] = strtotime($td['event']['time']['date'] . " " . $td['event']['time']['time']);
-							//$td['event']['time']['check'] = date("c", $td['event']['time']['stamp']);
-							$td['event']['code'] = (string)$abi->ShipmentInfo->ShipmentEvent->ServiceEvent->EventCode;
-							
-							$tmp_event_desc = (string)$abi->ShipmentInfo->ShipmentEvent->ServiceEvent->Description;
-							$tmp_event_desc = preg_replace('/\s\s+/', ' ', $tmp_event_desc);
-							$td['event']['desc'] = $tmp_event_desc;
-							
-							$tmp_loc_desc = (string)$abi->ShipmentInfo->ShipmentEvent->ServiceArea->Description;
-							$tmp_loc_desc = preg_replace('/\s\s+/', ' ', $tmp_loc_desc);
-							$td['event']['location'] = $tmp_loc_desc;
+                     foreach($abi->ShipmentInfo->ShipmentEvent as $evt) {
+                        $evtArr['time']['date'] = (string)$evt->Date; 
+                        $evtArr['time']['time'] = (string)$evt->Time;
+                        $evtArr['time']['stamp'] = strtotime($evtArr['time']['date'] . " " . $evtArr['time']['time']);
+
+                        $evtArr['code'] = (string)$evt->ServiceEvent->EventCode; 
+
+                        $tmp_event_desc = (string)$evt->ServiceEvent->Description;
+                        $tmp_event_desc = preg_replace('/\s\s+/', ' ', $tmp_event_desc);
+                        $evtArr['desc'] = $tmp_event_desc;
+                        
+                        $tmp_loc_desc = (string)$evt->ServiceArea->Description;
+                        $tmp_loc_desc = preg_replace('/\s\s+/', ' ', $tmp_loc_desc);
+                        $evtArr['location'] = $tmp_loc_desc;
+
+                        $td['event'][] = $evtArr;
+                     }//END - foreach
 							
 							$ab_out[$tmp_awb] = $td;
 							$td = null;
@@ -284,7 +301,5 @@ class dhl_tracking{
 		}//END -foreach($ab_main AS $awb_run){
 		return($ab_out);
 	}//end function
-	
-	
 }
 ?>
