@@ -22,7 +22,7 @@ class dhl_tracking{
 	var $_xmlEnd	= "\n";
 	
 	var $checkAuth = false;
-	var $checkReq = false;
+	var $checkReq = true;
 	
 	function __construct($mode = 'test'){
 		//
@@ -38,7 +38,6 @@ class dhl_tracking{
 				// we default to test mode
 				$this->_PImode = "test";
 				break;
-			
 		}
 	}
 	//========================================================================================
@@ -46,16 +45,19 @@ class dhl_tracking{
 	//========================================================================================
 	function setAuth($userid = NULL,$pwd = NULL){
 		if(is_null($userid)){
-			$this->logError("auth > UserID", $msg = "user id was not set", true);
+			$this->logError("auth > UserID", "user id was not set", true);
 		}else{
 			$this->_PIuserid = $userid;
 		}
-		if(is_null($userid)){
-			$this->logError("auth > Password", $msg = "Password was not set", true);
+		if(is_null($pwd)){
+			$this->logError("auth > Password", "Password was not set", true);
 		}else{
 			$this->_PIpwd = $pwd;
 		}
-		$this->checkAuth;
+
+      if (!is_null($userid) && !is_null($pwd)) {
+   		$this->checkAuth = true;
+      }
 	}
 	
 	function logError($loc = "", $msg = "", $fail = false){
